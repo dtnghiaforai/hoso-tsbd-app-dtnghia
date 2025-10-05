@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Soạn Hồ sơ TSBĐ — Compact</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn-tailwindcss.vercel.app/"></script>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap" rel="stylesheet">
 <style>
   html{font-family:'Lora',serif}
@@ -23,9 +23,16 @@
     <p class="mt-2">Ứng dụng đang trong quá trình vận hành thử nghiệm, rất mong nhận được góp ý của các bạn để ứng dụng hoàn thiện tốt nhất. Mọi góp ý vui lòng liên hệ: <b>dtnghia</b></p>
   </div>
 
-  <!-- Yêu cầu mới: Thay thế nút chọn file bằng danh sách các nút template -->
   <div class="border-2 border-amber-700/50 rounded-lg p-4 mb-6 bg-amber-100/50">
       <h2 class="text-xl font-bold text-amber-900 mb-3 text-center">Chọn loại hồ sơ TSBĐ cần tạo</h2>
+      
+      <!-- BƯỚC GỠ LỖI: Thêm link kiểm tra trực tiếp -->
+      <div class="text-center mb-3 p-2 bg-yellow-200 border border-yellow-400 rounded">
+          <p class="font-bold">Link kiểm tra sự cố:</p>
+          <a href="/templates/template_MB02_Bien ban dinh gia_QSDD.docx" target="_blank" class="text-blue-600 underline hover:text-blue-800">Nhấn vào đây để kiểm tra file template số 1</a>
+          <p class="text-sm italic mt-1">Nếu link này báo lỗi 404 (Not Found), vui lòng xem lại hướng dẫn bên dưới.</p>
+      </div>
+
       <div id="templateButtonsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <!-- Các nút template sẽ được tạo bằng JavaScript -->
       </div>
@@ -36,7 +43,6 @@
   </div>
 
   <div class="flex flex-wrap justify-center gap-4 mb-6">
-    <!-- Nút chọn file cũ đã được loại bỏ và thay thế bằng khu vực chọn template ở trên -->
     <button id="btn-save" onclick="saveData()" class="py-2 px-4 bg-yellow-700 text-white rounded-lg classic">💾 Lưu dữ liệu đã nhập</button>
     <input id="loadFileInput" type="file" accept=".json" hidden>
     <button onclick="$('#loadFileInput').click()" class="py-2 px-4 bg-yellow-700 text-white rounded-lg classic">📥 Tải lên dữ liệu đã nhập</button>
@@ -170,19 +176,14 @@ function show(msg, type='info') {
   setTimeout(() => d.classList.add('hidden'), 5000);
 }
 
-// ... Các hàm tính toán và định dạng không thay đổi ...
 function numFmt(s){if(!s) return '';const d=String(s).replace(/\D/g,'');return d.replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 function numFmtDecimal(s){if(!s) return '';let cleaned=String(s).replace(/[^\d,]/g,'');const parts=cleaned.split(',');if(parts.length>2) cleaned=parts[0]+','+parts.slice(1).join('');if(parts.length===2){return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+parts[1]}return cleaned.replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
 function parseVN(str){if(!str) return 0;const cleaned=String(str).replace(/\./g,'').replace(/,/g,'.').replace(/[^0-9\.]/g,'');const n=parseFloat(cleaned);return isNaN(n)?0:n}
 function readG(s){const u=['','một','hai','ba','bốn','năm','sáu','bảy','tám','chín'];if(!s) return '';s=('000'+s).slice(-3);const d1=+s[0],d2=+s[1],d3=+s[2];let r='';if(d1) r+=u[d1]+' trăm';if(d2) r+=(r?' ':'')+(d2==1?'mười':u[d2]+' mươi');else if(d1 && d3) r+=(r?' ':'')+'lẻ';if(d3) {r+=(r?' ':'');if(d2==1) r+= (d3==5?'lăm':u[d3]); else if(d2>=2) r+=(d3==1?'mốt':(d3==5?'lăm':u[d3])); else r+=u[d3]}return r.trim()}
 function toWords(raw){let s=String(raw).replace(/\D/g,'');if(!s||s=='0') return 'Không đồng';s=s.replace(/^0+/,'');const g=[];let t=s;while(t.length){const gl=t.length>3?3:t.length;g.unshift(t.slice(-gl));t=t.slice(0,-gl)};let out='';for(let i=0;i<g.length;i++){const gw=readG(g[i]);const idx=g.length-1-i;let u='';if(idx==1) u='nghìn';else if(idx==2) u='triệu';else if(idx==3) u='tỷ';else if(idx==4) u='nghìn tỷ';if(gw){out+=(out?' ':'')+gw+(u?' '+u:'')}}out=out.replace(/tỷ triệu/g,'tỷ').trim();return out.charAt(0).toUpperCase()+out.slice(1)+' đồng'}
 
-
-// Yêu cầu mới: Hàm để chọn và tải template
 async function selectTemplate(templatePath, templateName, btnElement) {
-    // Bỏ active tất cả các nút
     document.querySelectorAll('.template-btn').forEach(btn => btn.classList.remove('active'));
-
     const nameSpan = $('#templateFileName');
     nameSpan.textContent = 'Đang tải...';
     try {
@@ -198,7 +199,6 @@ async function selectTemplate(templatePath, templateName, btnElement) {
         };
         nameSpan.textContent = templateName;
         show(`Đã chọn template: ${templateName}`, 'success');
-        // Đánh dấu nút được chọn là active
         btnElement.classList.add('active');
     } catch (err) {
         nameSpan.textContent = 'Lỗi khi tải template!';
@@ -207,7 +207,6 @@ async function selectTemplate(templatePath, templateName, btnElement) {
     }
 }
 
-// Yêu cầu mới: Hàm tạo các nút chọn template khi tải trang
 function generateTemplateButtons() {
     const container = $('#templateButtonsContainer');
     TEMPLATES.forEach(template => {
@@ -219,7 +218,6 @@ function generateTemplateButtons() {
         container.appendChild(btn);
     });
 }
-
 
 function openTab(evt, tabName){
   const contents=document.getElementsByClassName('tab-content');
@@ -808,14 +806,12 @@ $('#loadFileInput').addEventListener('change',e=>{
 
 $('#profileForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  // Yêu cầu mới: Kiểm tra xem template đã được chọn và tải về chưa
   if(!selectedTemplate || !selectedTemplate.blob){
     show('Vui lòng chọn một loại hồ sơ cần tạo từ danh sách ở trên.','error');
     return;
   }
   const data=collectData();
   
-  // Yêu cầu mới: Không cần dùng FileReader nữa vì đã có blob
   const fd=new FormData();
   fd.append('template', selectedTemplate.blob, selectedTemplate.path);
   fd.append('data',JSON.stringify(data));
@@ -858,7 +854,7 @@ function saveData(){
 
 window.onload=()=>{
   generateForm();
-  generateTemplateButtons(); // Yêu cầu mới: Tạo các nút chọn template
+  generateTemplateButtons();
   document.querySelectorAll('.classic').forEach(b=>{
     if(!b.style.boxShadow){
       b.style.boxShadow='0 4px 0 rgba(0,0,0,.4)';
@@ -869,3 +865,4 @@ window.onload=()=>{
 </script>
 </body>
 </html>
+
