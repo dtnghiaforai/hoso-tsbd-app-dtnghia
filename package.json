@@ -1,0 +1,27 @@
+{
+  "name": "hoso-tsbd-app",
+  "version": "1.0.0",
+  "description": "Ứng dụng soạn thảo hồ sơ tài sản bảo đảm",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build-exe": "pkg . --targets node18-win-x64 -o dist/SoanHoSoTSBD"
+  },
+  "dependencies": {
+    "angular-expressions": "^1.1.4",
+    "cors": "^2.8.5",
+    "docxtemplater": "^3.42.5",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "pizzip": "^3.1.4"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "bin": "server.js",
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
+  }
+}

@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Soạn Hồ sơ TSBĐ — Compact</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html{font-family:'Lora',serif}
+  .classic{transition:.15s;box-shadow:0 4px 0 rgba(0,0,0,.4);border-bottom:2px solid rgba(0,0,0,.4)}
+  .tabbtn{border-radius:8px 8px 0 0;border:2px solid transparent}
+  .table-input{width:100%;padding:.5rem;border:1px solid #d1d5db;border-radius:4px; transition: background-color 0.1s;}
+  .stt{min-height:2.5rem;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body class="bg-stone-100 p-4 md:p-10 text-gray-800">
+<div class="mx-auto max-w-6xl bg-amber-50 p-6 md:p-10 rounded-xl shadow-2xl border-4 border-amber-800/80">
+  <h1 class="text-3xl font-bold text-amber-900 mb-4 text-center tracking-wider border-b-2 border-amber-700 pb-3">📝 Ứng dụng Soạn thảo Hồ sơ Tài sản Bảo đảm</h1>
+  <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
+    <b>⚠️ Chú ý:</b> Tạo .docx cần backend. Ứng dụng này đã tích hợp sẵn backend.
+  </div>
+  <div class="flex flex-wrap justify-center gap-4 mb-6">
+    <input id="templateFile" type="file" accept=".docx" hidden>
+    <button onclick="$('#templateFile').click()" class="py-2 px-4 bg-amber-800 text-white rounded-lg classic">📂 Chọn template</button>
+    <span id="templateFileName" class="self-center italic text-amber-900">Chưa chọn file</span>
+    <button id="btn-save" onclick="saveData()" class="py-2 px-4 bg-yellow-700 text-amber-900 rounded-lg classic">💾 Lưu nháp (JSON)</button>
+    <input id="loadFileInput" type="file" accept=".json" hidden>
+    <button onclick="$('#loadFileInput').click()" class="py-2 px-4 bg-yellow-700 text-amber-900 rounded-lg classic">📥 Tải dữ liệu</button>
+  </div>
+
+  <div id="tabMenu" class="flex flex-wrap gap-2 mb-4"></div>
+  <form id="profileForm">
+    <div id="tabContent" class="p-6 border-2 border-amber-700 bg-white rounded-b-xl rounded-tr-xl shadow-inner"></div>
+    <div class="text-center mt-8"><button id="btn-generate" class="py-3 px-8 bg-green-700 text-white rounded-lg classic">✍️ Tạo & Tải DOCX</button></div>
+  </form>
+  <div id="message" class="hidden mt-4 p-3 rounded-lg font-bold text-center"></div>
+</div>
+
+<script>
+// \u00B2 là ký tự m^2
+const BASE_DAT=[
+  {id:"ten_tsbd$X$",label:"Tên tài sản bảo đảm (TSBĐ) $X$",type:"text"},
+  {id:"hoso_tsbd$X$",label:"Hồ sơ TSBĐ $X$",type:"textarea"},
+  {id:"sothuadat_tsbd$X$",label:"Số Thửa đất TSBĐ $X$",type:"text"},
+  {id:"tobando_tsbd$X$",label:"Số Tờ bản đồ TSBĐ $X$",type:"text"},
+  {id:"dientichdat_tsbd$X$",label:"Diện tích đất TSBĐ $X$ (m\u00B2)",type:"text"},
+  {id:"dientichdatbangchu_tsbd$X$",label:"Diện tích đất TSBĐ $X$ (bằng chữ)",type:"text"},
+  {id:"loaidat_tsbd$X$",label:"Loại đất TSBĐ $X$",type:"text"},
+  {id:"thoihansudungdat_tsbd$X$",label:"Thời hạn sử dụng đất TSBĐ $X$",type:"text"},
+  {id:"hinhthucsudungdat_tsbd$X$",label:"Hình thức sử dụng đất TSBĐ $X$",type:"text"},
+  {id:"diachi_tsbd$X$",label:"Địa chỉ TSBĐ $X$",type:"text"},
+  {id:"nguongoc_tsbd$X$",label:"Nguồn gốc sử dụng đất TSBĐ $X$",type:"text"},
+  {id:"ghichu_tsbd$X$",label:"Ghi chú TSBĐ $X$",type:"textarea"},
+  {id:"vitridat_tsbd$X$",label:"Vị trí đất TSBĐ $X$ theo Khung giá UBND",type:"text"},
+  {id:"sodothuadat_tsbd$X$",label:"Sơ đồ thửa đất TSBĐ $X$",type:"textarea"},
+  {id:"thongtinquyhoach_tsbd$X$",label:"Thông tin quy hoạch TSBĐ $X$",type:"text"},
+  {id:"thongtintranhchap_tsbd$X$",label:"Thông tin tranh chấp TSBĐ $X$",type:"text"},
+  {id:"hanche_tsbd$X$",label:"Hạn chế của TSBĐ $X$",type:"text"},
+  {id:"hientrangkhac_tsbd$X$",label:"Hiện trạng khác của TSBĐ $X$",type:"textarea"},
+  {id:"noidungkhongphuhopphaply_tsbd$X$",label:"Nội dung không phù hợp với hồ sơ pháp lý TSBĐ $X$",type:"text"},
+  {id:"phantichvitri_tsbd$X$",label:"Phân tích vị trí TSBĐ $X$",type:"textarea"},
+  {id:"phantichsudung_tsbd$X$",label:"Phân tích tình hình sử dụng TSBĐ $X$",type:"textarea"}
+];
+// Đã thêm (m²) vào nhãn (label)
+const BASE_NHA=[
+  {id:"loainhao_tsbd$X$",label:"Loại Nhà ở TSBĐ $X$",type:"text"},
+  {id:"dientichxd_tsbd$X$",label:"Diện tích xây dựng TSBĐ $X$ (m\u00B2)",type:"text"},
+  {id:"dientichsan_tsbd$X$",label:"Diện tích sàn TSBĐ $X$ (m\u00B2)",type:"text"},
+  {id:"hinhthucsohuu_tsbd$X$",label:"Hình thức sở hữu TSBĐ $X$",type:"text"},
+  {id:"capnhao_tsbd$X$",label:"Cấp (Hạng) công trình TSBĐ $X$",type:"text"},
+  {id:"thoihansohuu_tsbd$X$",label:"Thời hạn sở hữu nhà ở TSBĐ $X$",type:"text"}
+];
+function genTSBD(base,i){return base.map(f=>{const id=f.id.replace('$X$',i);return {id, label:f.label.replace('$X$',i), type:f.type, genericId:id.replace(`_tsbd${i}`,'')}})}
+
+const LAND_PRICE_FIELDS=[
+  {id:"stt_bangkg",label:"TT",type:"text",width:"w-[5%]"},
+  {id:"loaidat_bangkg",label:"Loại đất",type:"text",width:"w-[10%]",placeholder:"VD: Đất ở"},
+  {id:"tenduongpho_bangkg",label:"Tên đường phố",type:"text",width:"w-[20%]"},
+  {id:"doanduong_bangkg",label:"Đoạn đường (Từ - Đến)",type:"text",width:"w-[15%]"},
+  {id:"dgdatvt1_bangkg",label:"Đơn giá VT1 (đồng/m\u00B2)",type:"currency-integer-table",width:"w-[12.5%]"},
+  {id:"dgdatvt2_bangkg",label:"Đơn giá VT2 (đồng/m\u00B2)",type:"currency-integer-table",width:"w-[12.5%]"},
+  {id:"dgdatvt3_bangkg",label:"Đơn giá VT3 (đồng/m\u00B2)",type:"currency-integer-table",width:"w-[12.5%]"},
+  {id:"dgdatvt4_bangkg",label:"Đơn giá VT4 (đồng/m\u00B2)",type:"currency-integer-table",width:"w-[12.5%]"}
+];
+const LAND_VALUE_FIELDS=[
+  {id:"stt_bangdgts",label:"TT",type:"text",width:"w-[4%]"},
+  {id:"gcnts_bangdgts",label:"Giấy chứng nhận tài sản",type:"text",width:"w-[12%]"},
+  {id:"sothuadat_bangdgts",label:"Số thửa đất",type:"text",width:"w-[8%]"},
+  {id:"hangmuc_bangdgts",label:"Hạng mục",type:"text",width:"w-[12%]"},
+  {id:"dientich_bangdgts",label:"Diện tích (m\u00B2)",type:"currency-decimal-table",width:"w-[8%]"},
+  {id:"dongia_bangdgts",label:"Đơn giá (đồng/m\u00B2)",type:"currency-integer-table",width:"w-[12%]"},
+  {id:"clcl_bangdgts",label:"CLCL",type:"percent-integer-table",width:"w-[6%]"},
+  {id:"thanhtien_bangdgts",label:"Thành tiền (đồng)",type:"currency-integer-table",width:"w-[12%]",readonly:true},
+  {id:"thanhtienlamtron_bangdgts",label:"Thành tiền làm tròn (đồng)",type:"currency-integer-table",width:"w-[12%]",readonly:true},
+  {id:"mucctdtoida_bangdgts",label:"Mức cấp tín dụng tối đa (đồng)",type:"currency-integer-table",width:"w-[12%]"},
+  {id:"tyleboa_bangdgts",label:"Tỷ lệ BOA",type:"percent-decimal-table",width:"w-[6%]",readonly:true},
+  {id:"cancudinhgia_bangdgts",label:"Căn cứ định giá",type:"text",width:"w-[10%]"}
+];
+
+const LAND_PRICE_TABLE_CONFIG = {isTable:true,dataKey:'bang_khung_gia_dat',fields:LAND_PRICE_FIELDS};
+const MERGED_LAND_PRICE_TAB_ID = '10-KhungGiaDat';
+
+// FIELDS: Tab 1 bỏ tonggiatri, Tab 4, 6, 8 hiển thị tên trường Phân tích vị trí TSBĐ X
+const FIELDS={
+  "1. Thông tin chung":[{id:"tieude_bbdg",label:"Tiêu đề biên bản định giá",type:"select",options:["Định giá tài sản bảo đảm","Định giá lại tài sản bảo đảm"]},{id:"so_bbdg",label:"Số biên bản",type:"text"},{id:"ngay_bbdg",label:"Ngày lập (dd/mm/yyyy)",type:"text"},{id:"thoigian_bbdg",label:"Thời gian lập (hh:mm)",type:"text"},{id:"noilap_bbdg",label:"Nơi lập",type:"text"},{id:"thoigian_khaosattsbd",label:"Thời gian khảo sát (hh:mm)",type:"text"},{id:"ngay_khaosattsbd",label:"Ngày khảo sát (dd/mm/yyyy)",type:"text"}],
+  "2. Bên nhận bảo đảm":[{id:"bnbd",label:"Tên Bên Nhận Bảo Đảm",type:"text"},{id:"gcndk_bnbd",label:"GCN đăng ký doanh nghiệp",type:"text"},{id:"diachi_bnbd",label:"Địa chỉ",type:"text"}],
+  "3. Bên bảo đảm":[{id:"ten_bbd1",label:"Tên BBĐ 1",type:"text"},{id:"gttt_bbd1",label:"Giấy tờ BBĐ 1",type:"text"},{id:"diachi_bbd1",label:"Địa chỉ BBĐ 1",type:"text"},{id:"ten_bbd2",label:"Tên BBĐ 2",type:"text"},{id:"gttt_bbd2",label:"Giấy tờ BBĐ 2",type:"text"},{id:"diachi_bbd2",label:"Địa chỉ BBĐ 2",type:"text"}],
+  "4. Tài sản bảo đảm 1 (Thửa đất)":genTSBD(BASE_DAT,1),
+  "5. Tài sản bảo đảm 1 (Nhà ở)":genTSBD(BASE_NHA,1),
+  "6. Tài sản bảo đảm 2 (Thửa đất)":genTSBD(BASE_DAT,2),
+  "7. Tài sản bảo đảm 2 (Nhà ở)":genTSBD(BASE_NHA,2),
+  "8. Tài sản bảo đảm 3 (Thửa đất)":genTSBD(BASE_DAT,3),
+  "9. Tài sản bảo đảm 3 (Nhà ở)":genTSBD(BASE_NHA,3),
+  "10. Căn cứ định giá":[{id:"cancudg",label:"Căn cứ định giá",type:"textarea"}],
+  "11. Giá trị định giá":{isTable:true,dataKey:'bang_giatri_dinhgia',fields:LAND_VALUE_FIELDS},
+  // *** START CHANGE ***
+  "12. Hợp đồng bảo đảm": [
+    {id:"ten_hdbd", label:"Tên Hợp đồng bảo đảm", type:"text"},
+    {id:"so_hdbd", label:"Số Hợp đồng bảo đảm", type:"text"},
+    {id:"ten_benvay1", label:"Tên Bên Vay 1", type:"text"},
+    {id:"gttt_benvay1", label:"GTTT Bên Vay 1", type:"text"},
+    {id:"diachi_benvay1", label:"Địa chỉ Bên Vay 1", type:"text"},
+    {id:"ten_benvay2", label:"Tên Bên Vay 2", type:"text"},
+    {id:"gttt_benvay2", label:"GTTT Bên Vay 2", type:"text"},
+    {id:"diachi_benvay2", label:"Địa chỉ Bên Vay 2", type:"text"},
+    {id:"bpbdtheopd", label:"Biện pháp bảo đảm theo phê duyệt", type:"text"}
+  ]
+  // *** END CHANGE ***
+};
+let copied={dat:null,nha:null},rowIdx=0;
+const $=(s)=>document.querySelector(s);
+
+function show(msg, type='info') {
+  const d = $('#message');
+  d.textContent = msg;
+  d.className = 'mt-4 p-3 rounded-lg font-bold text-center';
+  if (type === 'success') {
+    d.classList.add('bg-green-100', 'text-green-800');
+  } else if (type === 'error') {
+    d.classList.add('bg-red-100', 'text-red-800');
+  } else {
+    d.classList.add('bg-amber-100', 'text-amber-900');
+  }
+  d.classList.remove('hidden');
+  setTimeout(() => d.classList.add('hidden'), 5000);
+}
+
+function numFmt(s){if(!s) return '';const d=String(s).replace(/\D/g,'');return d.replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
+function numFmtDecimal(s){if(!s) return '';let cleaned=String(s).replace(/[^\d,]/g,'');const parts=cleaned.split(',');if(parts.length>2) cleaned=parts[0]+','+parts.slice(1).join('');if(parts.length===2){return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+parts[1]}return cleaned.replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
+function parseVN(str){if(!str) return 0;const cleaned=String(str).replace(/\./g,'').replace(/,/g,'.').replace(/[^0-9\.]/g,'');const n=parseFloat(cleaned);return isNaN(n)?0:n}
+function readG(s){const u=['','một','hai','ba','bốn','năm','sáu','bảy','tám','chín'];if(!s) return '';s=('000'+s).slice(-3);const d1=+s[0],d2=+s[1],d3=+s[2];let r='';if(d1) r+=u[d1]+' trăm';if(d2) r+=(r?' ':'')+(d2==1?'mười':u[d2]+' mươi');else if(d1 && d3) r+=(r?' ':'')+'lẻ';if(d3) {r+=(r?' ':'');if(d2==1) r+= (d3==5?'lăm':u[d3]); else if(d2>=2) r+=(d3==1?'mốt':(d3==5?'lăm':u[d3])); else r+=u[d3]}return r.trim()}
+function toWords(raw){let s=String(raw).replace(/\D/g,'');if(!s||s=='0') return 'Không đồng';s=s.replace(/^0+/,'');const g=[];let t=s;while(t.length){const gl=t.length>3?3:t.length;g.unshift(t.slice(-gl));t=t.slice(0,-gl)};let out='';for(let i=0;i<g.length;i++){const gw=readG(g[i]);const idx=g.length-1-i;let u='';if(idx==1) u='nghìn';else if(idx==2) u='triệu';else if(idx==3) u='tỷ';else if(idx==4) u='nghìn tỷ';if(gw){out+=(out?' ':'')+gw+(u?' '+u:'')}}out=out.replace(/tỷ triệu/g,'tỷ').trim();return out.charAt(0).toUpperCase()+out.slice(1)+' đồng'}
+
+function openTab(evt, tabName){
+  const contents=document.getElementsByClassName('tab-content');
+  for(let i=0;i<contents.length;i++) contents[i].style.display='none';
+  const buttons=document.getElementById('tabMenu').getElementsByTagName('button');
+  for(let i=0;i<buttons.length;i++){
+    buttons[i].className='py-2 px-4 text-sm font-semibold bg-stone-200 border-2 text-amber-900 tabbtn';
+  }
+  const current=document.getElementById(tabName);
+  if(current) current.style.display='block';
+  if(evt && evt.currentTarget) evt.currentTarget.className='py-2 px-4 text-sm font-semibold bg-white border-2 border-amber-700 text-amber-900 tabbtn';
+  else if(buttons.length>0) buttons[0].className='py-2 px-4 text-sm font-semibold bg-white border-2 border-amber-700 text-amber-900 tabbtn';
+}
+function createField(f){
+  const wr=document.createElement('div');
+  wr.className='form-group mb-4';
+  const lab=document.createElement('label');
+  lab.htmlFor=f.id;
+  lab.className='block mb-2 font-bold text-gray-700';
+  lab.textContent=f.label+' (ID: '+f.id+'): ';
+  wr.appendChild(lab);
+  let inp;
+  if(f.type==='textarea'){
+    inp=document.createElement('textarea');
+    inp.rows=3;
+    inp.className='w-full p-2 border-2 rounded-md';
+  }else if(f.type==='select'){
+    inp=document.createElement('select');
+    inp.className='w-full p-2 border-2 rounded-md';
+    f.options.forEach(o=>{
+      const op=document.createElement('option');
+      op.value=o;
+      op.textContent=o;
+      inp.appendChild(op);
+    });
+  }else{
+    inp=document.createElement('input');
+    inp.type='text';
+    inp.className='w-full p-2 border-2 rounded-md';
+  }
+  inp.id=f.id;
+  inp.name=f.id;
+  wr.appendChild(inp);
+  return wr;
+}
+function getTableConfig(tabName) {
+  if (tabName === MERGED_LAND_PRICE_TAB_ID) return LAND_PRICE_TABLE_CONFIG;
+  const cfg = FIELDS[tabName];
+  if (cfg && cfg.isTable) return cfg;
+  return null;
+}
+function createTotalSummaryContainer(tabName,cfg){
+  const cont=document.createElement('div');
+  cont.className='mt-8 pt-6 border-t-2 border-amber-700 space-y-4';
+
+  // Phần tổng hợp (Di chuyển từ Tab 1)
+  cont.innerHTML=`
+    <h3 class="text-xl font-bold text-amber-900 mb-3">Kết quả định giá Tài sản Bảo đảm</h3>
+    <div class="space-y-4 p-4 border rounded-lg bg-yellow-50 shadow-inner">
+      <div class="form-group">
+        <label for="tonggiatri_tsbd_bangso" class="block mb-2 font-bold text-gray-700">Tổng giá trị các tài sản bảo đảm (bằng số) (đồng) (ID: tonggiatri_tsbd_bangso):</label>
+        <div class="flex gap-2 items-center">
+          <input type="text" id="tonggiatri_tsbd_bangso" name="tonggiatri_tsbd_bangso" readonly class="w-full p-2 border-2 rounded-md bg-stone-100 font-bold text-lg text-left">
+          <button type="button" onclick="updateTotalRow()" class="flex-shrink-0 py-2 px-4 bg-amber-600 text-white rounded-lg classic text-sm whitespace-nowrap hover:bg-amber-700">Tính tổng</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="tonggiatri_tsbd_bangchu" class="block mb-2 font-bold text-gray-700">Tổng giá trị các tài sản bảo đảm (bằng chữ) (ID: tonggiatri_tsbd_bangchu):</label>
+        <textarea id="tonggiatri_tsbd_bangchu" name="tonggiatri_tsbd_bangchu" rows="2" readonly class="w-full p-2 border-2 rounded-md bg-stone-100 font-bold"></textarea>
+      </div>
+    </div>
+  `;
+  return cont;
+}
+
+function renderTable(name,conf){
+  const cont=document.createElement('div');
+  cont.id=name;
+  cont.className='tab-content';
+  cont.style.display='none';
+  const wrap=document.createElement('div');
+  wrap.className='overflow-x-auto';
+  const table=document.createElement('table');
+  table.className='w-full divide-y border rounded-lg';
+  const thead=document.createElement('thead');
+  thead.className='bg-amber-100 sticky top-0';
+  const hr=document.createElement('tr');
+  conf.fields.forEach(f=>{
+    const th=document.createElement('th');
+    th.className='p-3 text-left text-xs font-semibold '+(f.width||'');
+    th.textContent=f.label;
+    hr.appendChild(th);
+  });
+  const act=document.createElement('th');
+  act.className='p-3 text-center w-[50px]';
+  act.textContent='Xoá';
+  hr.appendChild(act);
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  tbody.className='bg-white table-body';
+  table.appendChild(tbody);
+  
+  // Thêm dòng TỔNG CỘNG vào footer nếu là tab 11
+  if (name === '11. Giá trị định giá') {
+    const tfoot=document.createElement('tfoot');
+    tfoot.className='bg-amber-200 font-bold border-t-2 border-amber-800';
+    tfoot.innerHTML=`
+      <tr class="font-bold">
+        <td class="p-2 text-center border-r" colspan="6">TỔNG CỘNG</td>
+        <td class="p-1 border-r text-center"></td>
+        <td class="p-1 border-r"><input type="text" id="tong_thanhtien_bangdgts" name="tong_thanhtien_bangdgts" readonly class="table-input text-sm bg-transparent border-none text-right font-bold p-1"></td>
+        <td class="p-1 border-r"><input type="text" id="tong_thanhtienlamtron_bangdgts" name="tong_thanhtienlamtron_bangdgts" readonly class="table-input text-sm bg-transparent border-none text-right font-bold p-1"></td>
+        <td class="p-1 border-r"><input type="text" id="tong_mucctdtoida_bangdgts" name="tong_mucctdtoida_bangdgts" readonly class="table-input text-sm bg-transparent border-none text-right font-bold p-1"></td>
+        <td class="p-1 border-r"><input type="text" id="tong_tyleBOA_bangdgts" name="tong_tyleBOA_bangdgts" readonly class="table-input text-sm bg-transparent border-none text-right font-bold p-1"></td>
+        <td class="p-2 text-center"></td>
+      </tr>
+    `;
+    table.appendChild(tfoot);
+  }
+  wrap.appendChild(table);
+  cont.appendChild(wrap);
+  
+  const btnC=document.createElement('div');
+  btnC.className='mt-6 pt-4 border-t flex justify-end';
+  const add=document.createElement('button');
+  add.type='button';
+  add.textContent='➕ Thêm dòng mới';
+  add.className='py-2 px-4 bg-amber-600 text-white rounded-lg classic';
+  add.onclick=()=>addRow(name);
+  btnC.appendChild(add);
+  cont.appendChild(btnC);
+  
+  // Thêm phần Tổng hợp giá trị TSBĐ (di chuyển từ Tab 1)
+  if (name === '11. Giá trị định giá') {
+    cont.appendChild(createTotalSummaryContainer(name, conf));
+  }
+  
+  setTimeout(()=>addRow(name,true),0);
+  return cont;
+}
+
+function getTabInfo(n){
+  const m=n.match(/Tài sản bảo đảm (\d) \((Thửa đất|Nhà ở)\)/);
+  if(!m) return null;
+  return{index:+m[1],type:m[2]==='Thửa đất'?'dat':'nha',groupName:m[2]};
+}
+
+// Hàm này không đổi, chỉ đảm bảo nó được gọi lại khi cần
+function updateTotalRow(){
+  const tab='11. Giá trị định giá';
+  const rows=document.querySelectorAll(`#${CSS.escape(tab)} .table-body tr`);
+  let totalThanhTien=0;
+  let totalThanhTienLamTron=0;
+  let totalMucCTDToiDa=0;
+
+  rows.forEach(r=>{
+    const ttEl=r.querySelector('input[name="thanhtien_bangdgts"]');
+    const ttltEl=r.querySelector('input[name="thanhtienlamtron_bangdgts"]');
+    const mctdEl=r.querySelector('input[name="mucctdtoida_bangdgts"]');
+
+    totalThanhTien+=parseVN(ttEl?.value);
+    totalThanhTienLamTron+=parseVN(ttltEl?.value);
+    totalMucCTDToiDa+=parseVN(mctdEl?.value);
+  });
+
+  const t_tt=$('#tong_thanhtien_bangdgts');
+  const t_ttlt=$('#tong_thanhtienlamtron_bangdgts');
+  const t_mctd=$('#tong_mucctdtoida_bangdgts');
+  const t_boa=$('#tong_tyleBOA_bangdgts');
+  const t_bangso=$('#tonggiatri_tsbd_bangso');
+  const t_bangchu=$('#tonggiatri_tsbd_bangchu');
+
+  // 1. Cập nhật các trường tổng tiền trong tfoot
+  if(t_tt)t_tt.value=totalThanhTien?numFmt(String(totalThanhTien)):'';
+  if(t_ttlt)t_ttlt.value=totalThanhTienLamTron?numFmt(String(totalThanhTienLamTron)):'';
+  if(t_mctd)t_mctd.value=totalMucCTDToiDa?numFmt(String(totalMucCTDToiDa)):'';
+
+  // 2. Tính Tỷ lệ BOA (Tổng Mức CTD / Tổng Thành tiền làm tròn)
+  let totalBOA=0;
+  if(totalThanhTienLamTron>0){
+    totalBOA=(totalMucCTDToiDa/totalThanhTienLamTron)*100;
+  }
+  if(t_boa)t_boa.value=isFinite(totalBOA)?(Math.round(totalBOA*100)/100).toFixed(2).replace('.',',')+' %':'';
+
+  // 3. Cập nhật Tổng giá trị TSBĐ (bằng số) = Tổng Thành tiền làm tròn
+  if(t_bangso){
+    // Sử dụng giá trị đã format để hiển thị
+    t_bangso.value=t_ttlt.value; 
+    // Lưu giá trị thô để tính toán/lưu file, mặc dù công thức đã được tự động hóa.
+    t_bangso.setAttribute('data-raw',totalThanhTienLamTron); 
+  }
+  // 4. Cập nhật Tổng giá trị TSBĐ (bằng chữ)
+  if(t_bangchu)t_bangchu.value=toWords(totalThanhTienLamTron);
+}
+
+function attachRowCalc(row,cfg){
+  const get=(n)=>row.querySelector(`input[name="${n}"]`);
+  const a=get('dientich_bangdgts'),b=get('dongia_bangdgts'),c=get('clcl_bangdgts'),tt=get('thanhtien_bangdgts'),ttlt=get('thanhtienlamtron_bangdgts'),m=get('mucctdtoida_bangdgts'),ty=get('tyleboa_bangdgts');
+  function compute(){
+    const dient=parseVN(a?.value),dong=parseVN(b?.value),cl=parseVN(c?.value)/100;
+    let thanhtien=Math.round(dient*dong*cl);
+    tt.value=thanhtien?numFmt(String(thanhtien)):'';
+    const lamtron=thanhtien?Math.floor(thanhtien/1e6)*1e6:0;
+    ttlt.value=lamtron?numFmt(String(lamtron)):'';
+    const muc=parseVN(m?.value);
+    let tyle=lamtron?((muc/lamtron)*100):0;
+    ty.value=isFinite(tyle)?(Math.round(tyle*100)/100).toFixed(2).replace('.',',')+' %':'';
+    
+    updateTotalRow(); // Gọi hàm tính tổng sau khi cập nhật một dòng
+  }
+  [a,b,c,m].forEach(i=>{
+    if(i) i.addEventListener('input',()=>setTimeout(compute,0));
+    if(i) i.addEventListener('blur',()=>setTimeout(compute,0));
+  });
+  compute();
+}
+
+// ... Các hàm khác như generateForm, addRow, updNums, collectData không thay đổi nhiều
+function generateForm(){
+  const menu=$('#tabMenu');
+  const content=$('#tabContent');
+  Object.keys(FIELDS).forEach((name,i)=>{
+    const cfg=FIELDS[name];
+    const btn=document.createElement('button');
+    btn.textContent=name;
+    btn.className='py-2 px-4 text-sm font-semibold bg-stone-200 border-2 text-amber-900 tabbtn';
+    btn.onclick=(e)=>openTab(e,name);
+    menu.appendChild(btn);
+    let node;
+    if(cfg.isTable){
+      node=renderTable(name,cfg);
+    }else{
+      node=document.createElement('div');
+      node.id=name;
+      node.className='tab-content';
+      node.style.display='none';
+      cfg.forEach(f=>node.appendChild(createField(f)));
+      
+      if (name === "10. Căn cứ định giá") {
+        const tableNode = renderTable(MERGED_LAND_PRICE_TAB_ID, LAND_PRICE_TABLE_CONFIG);
+        tableNode.id = MERGED_LAND_PRICE_TAB_ID;
+        tableNode.style.display = 'block';
+        tableNode.classList.remove('tab-content');
+        const header = document.createElement('h2');
+        header.className = 'text-xl font-bold text-amber-900 mt-6 mb-3 border-b pb-2';
+        header.textContent = 'Bảng Khung giá đất';
+        node.appendChild(header);
+        node.appendChild(tableNode);
+      }
+      
+      const info=getTabInfo(name);
+      if(info){
+        const ac=document.createElement('div');
+        ac.className='mt-4 pt-4 border-t flex flex-wrap justify-end gap-3';
+        const c=document.createElement('button');
+        c.type='button';
+        c.textContent=`📋 Sao chép ${info.groupName}`;
+        c.className='py-2 px-3 bg-blue-600 text-white rounded-lg classic';
+        c.onclick=()=>copyTabGroupData(info.type,name);
+        ac.appendChild(c);
+        const p=document.createElement('button');
+        p.type='button';
+        p.textContent=`⬇️ Dán vào ${info.groupName}`;
+        p.className='py-2 px-3 bg-blue-400 text-white rounded-lg classic';
+        p.onclick=()=>pasteTabGroupData(info.type,name);
+        ac.appendChild(p);
+        const clr=document.createElement('button');
+        clr.type='button';
+        clr.textContent='🗑️ Xóa Tab này';
+        clr.className='py-2 px-3 bg-red-400 text-white rounded-lg classic';
+        clr.onclick=()=>clearTabGroupData(name);
+        ac.appendChild(clr);
+        node.appendChild(ac);
+      }
+    }
+    content.appendChild(node);
+  });
+  if(Object.keys(FIELDS).length)openTab(null,Object.keys(FIELDS)[0]);
+}
+
+function copyTabGroupData(type, sourceTabName) {
+  // Placeholder implementation for copy function
+  show(`Đã sao chép dữ liệu nhóm ${type === 'dat' ? 'Đất' : 'Nhà'}. (Chức năng này cần được triển khai đầy đủ)`, 'info');
+}
+
+function pasteTabGroupData(type, targetTabName) {
+  // Placeholder implementation for paste function
+  show(`Đã dán dữ liệu nhóm ${type === 'dat' ? 'Đất' : 'Nhà'}. (Chức năng này cần được triển khai đầy đủ)`, 'info');
+}
+
+function clearTabGroupData(tabName) {
+  // Placeholder implementation for clear function
+  const cfg = FIELDS[tabName];
+  if (cfg && !cfg.isTable) {
+    cfg.forEach(f => {
+      const el = document.getElementById(f.id);
+      if (el) el.value = '';
+    });
+    show(`Đã xóa sạch dữ liệu trong tab ${tabName}.`, 'success');
+  }
+}
+function addRow(tab,isInit=false){
+  const cfg=getTableConfig(tab);
+  if(!cfg||!cfg.isTable) return;
+  
+  const tbody=document.querySelector(`#${CSS.escape(tab)} .table-body`);
+  if(!tbody) return;
+  rowIdx++;
+  const tr=document.createElement('tr');
+  tr.id='r'+rowIdx;
+  tr.className='border-b hover:bg-amber-50';
+  cfg.fields.forEach(f=>{
+    const td=document.createElement('td');
+    if(f.id.startsWith('stt')){
+      td.className='p-2 font-bold text-center';
+      td.innerHTML='<span class="stt"></span>';
+    }else{
+      td.className='p-1';
+      const inp=document.createElement('input');
+      inp.type='text';
+      inp.name=f.id;
+      inp.className='table-input text-sm';
+      if(f.readonly) {
+        inp.readOnly=true;
+        inp.classList.add('bg-stone-100');
+      }
+      if(f.type==='currency-integer-table'){
+        inp.oninput=()=>{
+          let v=inp.value.replace(/\D/g,'');
+          inp.value=v?numFmt(v):'';
+        };
+        inp.style.textAlign='right';
+      }
+      if(f.type==='currency-decimal-table'){
+        inp.oninput=()=>{
+          inp.value=numFmtDecimal(inp.value);
+        };
+        inp.style.textAlign='right';
+      }
+      if(f.type==='percent-integer-table'){
+        inp.oninput=()=>{
+          let v=inp.value.replace(/[^0-9]/g,'');
+          if(v){
+            let num=parseInt(v);
+            if(num>100) num=100;
+            inp.value=num;
+          }else{
+            inp.value='';
+          }
+        };
+        inp.style.textAlign='right';
+        if(!f.readonly){
+          inp.addEventListener('blur',function(){
+            if(this.value!=='') this.value=this.value+'%';
+          });
+          inp.addEventListener('focus',function(){
+            this.value=this.value.replace(/%/g,'');
+          });
+        }
+      }
+      if(f.type==='percent-decimal-table'){
+        inp.oninput=()=>{
+          let v=inp.value.replace(/[^0-9,]/g,'');
+          const parts=v.split(',');
+          if(parts.length>2) v=parts[0]+','+parts.slice(1).join('');
+          inp.value=v;
+        };
+        inp.style.textAlign='right';
+        if(!f.readonly){
+          inp.addEventListener('blur',function(){
+            let raw=this.value.replace(/%/g,'').replace(/,/g,'.');
+            if(raw!==''){
+              let num=parseFloat(raw);
+              if(isNaN(num)) num=0;
+              if(num>100) num=100;
+              this.value=(Math.round(num*100)/100).toFixed(2).replace('.',',')+' %';
+            }
+          });
+          inp.addEventListener('focus',function(){
+            this.value=this.value.replace(/\s?%/g,'');
+          });
+        }
+      }
+      td.appendChild(inp);
+    }
+    tr.appendChild(td);
+  });
+  const del=document.createElement('td');
+  del.className='p-2 text-center w-[50px]';
+  const db=document.createElement('button');
+  db.type='button';
+  db.textContent='❌';
+  db.className='text-red-600 p-1 rounded-full bg-red-100';
+  db.onclick=()=>{
+    tr.remove();
+    updNums(tab);
+  };
+  del.appendChild(db);
+  tr.appendChild(del);
+  tbody.appendChild(tr);
+  updNums(tab);
+  if(cfg.dataKey==='bang_giatri_dinhgia') attachRowCalc(tr,cfg);
+  if(!isInit){
+    tr.scrollIntoView({behavior:'smooth',block:'end'});
+    const fi=tr.querySelector('input');
+    if(fi) fi.focus();
+  }
+}
+function updNums(tab){
+  const cfg=getTableConfig(tab);
+  if (!cfg) return;
+  const rows=document.querySelectorAll(`#${CSS.escape(tab)} .table-body tr`);
+  rows.forEach((r,i)=>{
+    const s=r.querySelector('.stt');
+    if(s) s.textContent=i+1;
+  });
+  if(tab==='11. Giá trị định giá') updateTotalRow();
+}
+function collectData(){
+  const out={};
+  Object.keys(FIELDS).forEach(tab=>{
+    const cfg=FIELDS[tab];
+    if(cfg.isTable){
+      const arr=[];
+      const rows=document.querySelectorAll(`#${CSS.escape(tab)} .table-body tr`);
+      rows.forEach(r=>{
+        const obj={};
+        const stt=r.querySelector('.stt');
+        const sttId=cfg.fields.find(f=>f.id.startsWith('stt')).id;
+        obj[sttId]=stt?stt.textContent:'';
+        r.querySelectorAll('input').forEach(inp=>{
+          let v=inp.value;
+          const fd=cfg.fields.find(f=>f.id===inp.name);
+          if(fd?.type==='currency-integer-table'||fd?.type==='currency-decimal-table') v=String(v).replace(/\./g,'').replace(/,/g,'.');
+          if(fd?.type==='percent-integer-table'||fd?.type==='percent-decimal-table') v=String(v).replace(/\s?%/g,'').replace(/,/g,'.');
+          obj[inp.name]=v;
+        });
+        const has=Object.keys(obj).some(k=>k!==sttId&&obj[k]);
+        if(has) arr.push(obj);
+      });
+      out[cfg.dataKey]=arr;
+      
+      // Bổ sung thu thập giá trị tổng (Tab 11)
+      if (tab === '11. Giá trị định giá') {
+        out['tong_thanhtien_bangdgts'] = parseVN($('#tong_thanhtien_bangdgts')?.value || '').toString();
+        out['tong_thanhtienlamtron_bangdgts'] = parseVN($('#tong_thanhtienlamtron_bangdgts')?.value || '').toString();
+        out['tong_mucctdtoida_bangdgts'] = parseVN($('#tong_mucctdtoida_bangdgts')?.value || '').toString();
+        out['tong_tyleBOA_bangdgts'] = parseVN($('#tong_tyleBOA_bangdgts')?.value.replace(' %', '') || '').toString();
+        out['tonggiatri_tsbd_bangso'] = parseVN($('#tonggiatri_tsbd_bangso')?.value || '').toString();
+        out['tonggiatri_tsbd_bangchu'] = $('#tonggiatri_tsbd_bangchu')?.value || '';
+      }
+    }else{
+      cfg.forEach(f=>{
+        const el=document.getElementById(f.id);
+        if(el){
+          let v=el.value;
+          out[f.id]=v;
+        }
+      });
+      // Logic thu thập dữ liệu bảng gộp (Khung giá đất)
+      if (tab === "10. Căn cứ định giá") {
+        const tableConfig = LAND_PRICE_TABLE_CONFIG;
+        const arr = [];
+        const rows = document.querySelectorAll(`#${CSS.escape(MERGED_LAND_PRICE_TAB_ID)} .table-body tr`);
+        rows.forEach(r => {
+          const obj = {};
+          const stt = r.querySelector('.stt');
+          const sttId = tableConfig.fields.find(f => f.id.startsWith('stt')).id;
+          obj[sttId] = stt ? stt.textContent : '';
+          r.querySelectorAll('input').forEach(inp => {
+            let v = inp.value;
+            const fd = tableConfig.fields.find(f => f.id === inp.name);
+            if (fd?.type === 'currency-integer-table' || fd?.type === 'currency-decimal-table') v = String(v).replace(/\./g, '').replace(/,/g, '.');
+            if (fd?.type === 'percent-integer-table' || fd?.type === 'percent-decimal-table') v = String(v).replace(/\s?%/g,'').replace(/,/g,'.');
+            obj[inp.name] = v;
+          });
+          const has = Object.keys(obj).some(k => k !== sttId && obj[k]);
+          if (has) arr.push(obj);
+        });
+        out[tableConfig.dataKey] = arr;
+      }
+    }
+  });
+  return out;
+}
+function populateForm(data){
+  Object.keys(FIELDS).forEach(tab=>{
+    const cfg=FIELDS[tab];
+    if(cfg.isTable){
+      const arr=data[cfg.dataKey]||[];
+      const tb=document.querySelector(`#${CSS.escape(tab)} .table-body`);
+      if(!tb) return;
+      tb.innerHTML='';
+      if(arr.length===0){
+        addRow(tab,true);
+        return;
+      }
+      arr.forEach(rd=>{
+        addRow(tab,true);
+        const nr=tb.lastElementChild;
+        cfg.fields.forEach(f=>{
+          const inp=nr.querySelector(`input[name="${f.id}"]`);
+          if(inp&&rd[f.id]!==undefined){
+            let v=rd[f.id];
+            if(f.type==='currency-integer-table'){
+              const d=String(v).replace(/\D/g,'');
+              v=d?numFmt(d):'';
+            }else if(f.type==='currency-decimal-table'){
+              // *** FIX STARTS HERE ***
+              // The value from JSON is in standard format "100.45".
+              // We just need to replace the dot with a comma for display.
+              // The old method `numFmtDecimal` was incorrect for this case.
+              v = String(v).replace('.', ',');
+              // *** FIX ENDS HERE ***
+            }else if(f.type==='percent-integer-table'){
+              const raw=String(v).replace(/[^0-9]/g,'');
+              if(raw==='') v='';
+              else{
+                let num=parseInt(raw);
+                if(num>100) num=100;
+                v=num+'%';
+              }
+           }else if(f.type==='percent-decimal-table'){
+              const raw=String(v).replace(/,/g,'.').replace(/[^0-9\.]/g,'');
+              if(raw==='') v='';
+              else{
+                let num=parseFloat(raw);
+                if(isNaN(num)) num=0;
+                if(num>100) num=100;
+                v=(f.id==='tyleboa_bangdgts')?(Math.round(num*100)/100).toFixed(2).replace('.',',')+' %':(Math.round(num*100)/100).toFixed(2).replace('.',',')+'%';
+              }
+            }
+            inp.value=v;
+          }
+        });
+        updNums(tab);
+      });
+
+      // Bổ sung điền dữ liệu cho các trường tổng (Tab 11)
+      if (tab === '11. Giá trị định giá') {
+        // Tái tính toán tổng ngay lập tức sau khi điền dữ liệu vào bảng
+        updateTotalRow(); 
+        
+        // Sau đó, kiểm tra xem có giá trị đã lưu cho tổng số (được tính toán độc lập) không.
+        // Trong trường hợp này, chúng ta cho phép updateTotalRow() ghi đè để đảm bảo tính toán mới nhất
+        // dựa trên dữ liệu bảng được điền.
+      }
+    }else{
+      cfg.forEach(f=>{
+        const el=document.getElementById(f.id);
+        if(el&&data[f.id]!==undefined){
+          let v=data[f.id];
+          el.value=v;
+        }
+      });
+      // Logic điền dữ liệu bảng gộp (Khung giá đất)
+      if (tab === "10. Căn cứ định giá") {
+        const tableConfig = LAND_PRICE_TABLE_CONFIG;
+        const arr = data[tableConfig.dataKey] || [];
+        const tb = document.querySelector(`#${CSS.escape(MERGED_LAND_PRICE_TAB_ID)} .table-body`);
+        if(!tb) return;
+        tb.innerHTML = '';
+        if(arr.length === 0){
+          addRow(MERGED_LAND_PRICE_TAB_ID, true);
+          return;
+        }
+        arr.forEach(rd => {
+          addRow(MERGED_LAND_PRICE_TAB_ID, true);
+          const nr = tb.lastElementChild;
+          tableConfig.fields.forEach(f => {
+            const inp = nr.querySelector(`input[name="${f.id}"]`);
+            if(inp && rd[f.id] !== undefined){
+              let v = rd[f.id];
+              if(f.type==='currency-integer-table'){
+                const d=String(v).replace(/\D/g,'');
+                v=d?numFmt(d):'';
+              }else if(f.type==='currency-decimal-table'){
+                v = String(v).replace('.', ','); // Apply same fix here
+              }else if(f.type==='percent-integer-table'){
+                const raw=String(v).replace(/[^0-9]/g,'');
+                if(raw==='') v='';
+                else{
+                  let num=parseInt(raw);
+                  if(num>100) num=100;
+                  v=num+'%';
+                }
+              }else if(f.type==='percent-decimal-table'){
+                const raw=String(v).replace(/,/g,'.').replace(/[^0-9\.]/g,'');
+                if(raw==='') v='';
+                else{
+                  let num=parseFloat(raw);
+                  if(isNaN(num)) num=0;
+                  if(num>100) num=100;
+                  v=(f.id==='tyleboa_bangdgts')?(Math.round(num*100)/100).toFixed(2).replace('.',',')+' %':(Math.round(num*100)/100).toFixed(2).replace('.',',')+'%';
+              }
+              }
+              inp.value=v;
+            }
+          });
+          updNums(MERGED_LAND_PRICE_TAB_ID);
+        });
+      }
+    }
+  });
+}
+let templateFile=null;
+$('#templateFile').addEventListener('change',e=>{
+  templateFile=e.target.files[0];
+  $('#templateFileName').textContent=templateFile?`File: ${templateFile.name}`:'Chưa chọn file';
+});
+$('#loadFileInput').addEventListener('change',e=>{
+  const f=e.target.files[0];
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      populateForm(d);
+      show('Đã tải dữ liệu','success');
+      // Kích hoạt tính tổng sau khi tải dữ liệu để đảm bảo chính xác
+      updateTotalRow(); 
+    }catch(err){
+      show('Lỗi JSON','error');
+    }
+  };
+  r.readAsText(f);
+});
+$('#profileForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!templateFile){
+    show('Vui lòng chọn template','error');
+    return;
+  }
+  const data=collectData();
+  const buffer=await new Promise(r=>{
+    const fr=new FileReader();
+    fr.onload=ev=>r(ev.target.result);
+    fr.readAsArrayBuffer(templateFile);
+  });
+  const fd=new FormData();
+  fd.append('template',new Blob([buffer],{type:templateFile.type}),templateFile.name);
+  fd.append('data',JSON.stringify(data));
+  show('Đang tạo DOCX...','info');
+  $('#btn-generate').disabled=true;
+  try{
+    // *** START CHANGE: Removed hardcoded URL ***
+    const resp=await fetch('/generate',{method:'POST',body:fd});
+    // *** END CHANGE ***
+    if(!resp.ok)throw new Error(`${resp.status} ${resp.statusText}`);
+    const blob=await resp.blob();
+    const name=`HoSoTSBD_${templateFile.name.replace('.docx','')}_${new Date().toISOString().slice(0,10)}.docx`;
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    show('Tạo DOCX thành công','success');
+  }catch(err){
+    show('Lỗi khi tạo DOCX: '+err.message,'error');
+  }finally{
+    $('#btn-generate').disabled=false;
+  }
+});
+function saveData(){
+  const d=collectData();
+  const s=JSON.stringify(d,null,2);
+  const b=new Blob([s],{type:'application/json'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');
+  a.href=u;
+  a.download=`DuLieuHoSoTSBD_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(u);
+  show('Đã lưu nháp','info');
+}
+
+window.onload=()=>{
+  generateForm();
+  document.querySelectorAll('.classic').forEach(b=>{
+    if(!b.style.boxShadow){
+      b.style.boxShadow='0 4px 0 rgba(0,0,0,.4)';
+      b.style.borderBottom='2px solid rgba(0,0,0,.4)';
+    }
+  });
+}
+</script>
+</body>
+</html>
