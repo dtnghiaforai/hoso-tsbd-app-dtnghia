@@ -17,16 +17,21 @@
 <body class="bg-stone-100 p-4 md:p-10 text-gray-800">
 <div class="mx-auto max-w-6xl bg-amber-50 p-6 md:p-10 rounded-xl shadow-2xl border-4 border-amber-800/80">
   <h1 class="text-3xl font-bold text-amber-900 mb-4 text-center tracking-wider border-b-2 border-amber-700 pb-3">📝 Ứng dụng Soạn thảo Hồ sơ Tài sản Bảo đảm</h1>
-  <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
-    <b>⚠️ Chú ý:</b> Tạo .docx cần backend. Ứng dụng này đã tích hợp sẵn backend.
+  <!-- Yêu cầu 1: Thay đổi nội dung chú ý -->
+  <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg text-sm">
+    <p class="font-bold">Hãy bình chọn cho PGD Châu Thị Kim nếu bạn thấy ứng dụng hữu ích và Chúng tôi sẽ có động lực để phát triển thêm các ứng dụng khác hỗ trợ bạn trong công việc.</p>
+    <p class="mt-2">Ứng dụng đang trong quá trình vận hành thử nghiệm, rất mong nhận được góp ý của các bạn để ứng dụng hoàn thiện tốt nhất. Mọi góp ý vui lòng liên hệ: <b>dtnghia</b></p>
   </div>
   <div class="flex flex-wrap justify-center gap-4 mb-6">
     <input id="templateFile" type="file" accept=".docx" hidden>
-    <button onclick="$('#templateFile').click()" class="py-2 px-4 bg-amber-800 text-white rounded-lg classic">📂 Chọn template</button>
+    <!-- Yêu cầu 2: Thay đổi tên button -->
+    <button onclick="$('#templateFile').click()" class="py-2 px-4 bg-amber-800 text-white rounded-lg classic">📂 Chọn loại hồ sơ TSBĐ cần tạo</button>
     <span id="templateFileName" class="self-center italic text-amber-900">Chưa chọn file</span>
-    <button id="btn-save" onclick="saveData()" class="py-2 px-4 bg-yellow-700 text-amber-900 rounded-lg classic">💾 Lưu nháp (JSON)</button>
+    <!-- Yêu cầu 2: Thay đổi tên và màu chữ button -->
+    <button id="btn-save" onclick="saveData()" class="py-2 px-4 bg-yellow-700 text-white rounded-lg classic">💾 Lưu dữ liệu đã nhập</button>
     <input id="loadFileInput" type="file" accept=".json" hidden>
-    <button onclick="$('#loadFileInput').click()" class="py-2 px-4 bg-yellow-700 text-amber-900 rounded-lg classic">📥 Tải dữ liệu</button>
+    <!-- Yêu cầu 2: Thay đổi tên và màu chữ button -->
+    <button onclick="$('#loadFileInput').click()" class="py-2 px-4 bg-yellow-700 text-white rounded-lg classic">📥 Tải lên dữ liệu đã nhập</button>
   </div>
 
   <div id="tabMenu" class="flex flex-wrap gap-2 mb-4"></div>
@@ -114,7 +119,6 @@ const FIELDS={
   "9. Tài sản bảo đảm 3 (Nhà ở)":genTSBD(BASE_NHA,3),
   "10. Căn cứ định giá":[{id:"cancudg",label:"Căn cứ định giá",type:"textarea"}],
   "11. Giá trị định giá":{isTable:true,dataKey:'bang_giatri_dinhgia',fields:LAND_VALUE_FIELDS},
-  // *** START CHANGE ***
   "12. Hợp đồng bảo đảm": [
     {id:"ten_hdbd", label:"Tên Hợp đồng bảo đảm", type:"text"},
     {id:"so_hdbd", label:"Số Hợp đồng bảo đảm", type:"text"},
@@ -126,9 +130,10 @@ const FIELDS={
     {id:"diachi_benvay2", label:"Địa chỉ Bên Vay 2", type:"text"},
     {id:"bpbdtheopd", label:"Biện pháp bảo đảm theo phê duyệt", type:"text"}
   ]
-  // *** END CHANGE ***
 };
-let copied={dat:null,nha:null},rowIdx=0;
+// Yêu cầu 4 & 5: Biến lưu trữ dữ liệu sao chép
+let copied={dat:null,nha:null};
+let rowIdx=0;
 const $=(s)=>document.querySelector(s);
 
 function show(msg, type='info') {
@@ -369,10 +374,14 @@ function attachRowCalc(row,cfg){
   compute();
 }
 
-// ... Các hàm khác như generateForm, addRow, updNums, collectData không thay đổi nhiều
 function generateForm(){
   const menu=$('#tabMenu');
   const content=$('#tabContent');
+  // Yêu cầu 3: Danh sách các tab có nút "Xóa"
+  const tabsWithClearButton = [
+      "1. Thông tin chung", "2. Bên nhận bảo đảm", "3. Bên bảo đảm",
+      "10. Căn cứ định giá", "11. Giá trị định giá", "12. Hợp đồng bảo đảm"
+  ];
   Object.keys(FIELDS).forEach((name,i)=>{
     const cfg=FIELDS[name];
     const btn=document.createElement('button');
@@ -401,57 +410,111 @@ function generateForm(){
         node.appendChild(header);
         node.appendChild(tableNode);
       }
-      
-      const info=getTabInfo(name);
-      if(info){
-        const ac=document.createElement('div');
-        ac.className='mt-4 pt-4 border-t flex flex-wrap justify-end gap-3';
-        const c=document.createElement('button');
-        c.type='button';
-        c.textContent=`📋 Sao chép ${info.groupName}`;
-        c.className='py-2 px-3 bg-blue-600 text-white rounded-lg classic';
-        c.onclick=()=>copyTabGroupData(info.type,name);
-        ac.appendChild(c);
-        const p=document.createElement('button');
-        p.type='button';
-        p.textContent=`⬇️ Dán vào ${info.groupName}`;
-        p.className='py-2 px-3 bg-blue-400 text-white rounded-lg classic';
-        p.onclick=()=>pasteTabGroupData(info.type,name);
-        ac.appendChild(p);
-        const clr=document.createElement('button');
-        clr.type='button';
-        clr.textContent='🗑️ Xóa Tab này';
-        clr.className='py-2 px-3 bg-red-400 text-white rounded-lg classic';
-        clr.onclick=()=>clearTabGroupData(name);
-        ac.appendChild(clr);
-        node.appendChild(ac);
-      }
+    }
+    // Yêu cầu 3, 4, 5: Thêm các nút chức năng
+    const info=getTabInfo(name);
+    if(info || tabsWithClearButton.includes(name)){
+      const container = (node.id === '11. Giá trị định giá') ? node.querySelector('.mt-6.pt-4.border-t') : node;
+      const ac=document.createElement('div');
+      ac.className='mt-4 pt-4 border-t flex flex-wrap justify-end gap-3';
+      
+      if(info){ // Chỉ thêm nút Sao chép/Dán cho các tab TSBĐ
+        const c=document.createElement('button');
+        c.type='button';
+        c.textContent=`📋 Sao chép ${info.groupName}`;
+        c.className='py-2 px-3 bg-blue-600 text-white rounded-lg classic';
+        c.onclick=()=>copyTabGroupData(info.type,name);
+        ac.appendChild(c);
+        const p=document.createElement('button');
+        p.type='button';
+        p.textContent=`⬇️ Dán vào ${info.groupName}`;
+        p.className='py-2 px-3 bg-blue-400 text-white rounded-lg classic';
+        p.onclick=()=>pasteTabGroupData(info.type,name);
+        ac.appendChild(p);
+      }
+
+      const clr=document.createElement('button');
+      clr.type='button';
+      clr.textContent='🗑️ Xóa Tab này';
+      clr.className='py-2 px-3 bg-red-400 text-white rounded-lg classic';
+      clr.onclick=()=>clearTabGroupData(name);
+      ac.appendChild(clr);
+      // Đối với tab table, chèn vào trước nút "Thêm dòng mới"
+      if (cfg.isTable && container.lastChild) {
+        container.insertBefore(ac, container.lastChild);
+      } else {
+        container.appendChild(ac);
+      }
     }
     content.appendChild(node);
   });
   if(Object.keys(FIELDS).length)openTab(null,Object.keys(FIELDS)[0]);
 }
 
+// Yêu cầu 4 & 5: Triển khai chức năng sao chép
 function copyTabGroupData(type, sourceTabName) {
-  // Placeholder implementation for copy function
-  show(`Đã sao chép dữ liệu nhóm ${type === 'dat' ? 'Đất' : 'Nhà'}. (Chức năng này cần được triển khai đầy đủ)`, 'info');
+  const cfg = FIELDS[sourceTabName];
+  if (!cfg || cfg.isTable) return;
+
+  const dataToCopy = {};
+  cfg.forEach(f => {
+      const el = document.getElementById(f.id);
+      if (el) {
+          // Dùng genericId để có thể dán sang tab khác (vd: từ TSBĐ 1 sang TSBĐ 2)
+          dataToCopy[f.genericId] = el.value;
+      }
+  });
+
+  copied[type] = dataToCopy;
+  show(`Đã sao chép dữ liệu ${type === 'dat' ? 'Thửa đất' : 'Nhà ở'} vào bộ nhớ.`, 'success');
 }
 
+// Yêu cầu 4 & 5: Triển khai chức năng dán
 function pasteTabGroupData(type, targetTabName) {
-  // Placeholder implementation for paste function
-  show(`Đã dán dữ liệu nhóm ${type === 'dat' ? 'Đất' : 'Nhà'}. (Chức năng này cần được triển khai đầy đủ)`, 'info');
+  const dataToPaste = copied[type];
+  if (!dataToPaste) {
+      show(`Chưa có dữ liệu ${type === 'dat' ? 'Thửa đất' : 'Nhà ở'} để dán. Hãy sao chép trước.`, 'error');
+      return;
+  }
+
+  const cfg = FIELDS[targetTabName];
+  if (!cfg || cfg.isTable) return;
+
+  cfg.forEach(f => {
+      const value = dataToPaste[f.genericId];
+      if (value !== undefined) {
+          const el = document.getElementById(f.id);
+          if (el) el.value = value;
+      }
+  });
+  show(`Đã dán dữ liệu ${type === 'dat' ? 'Thửa đất' : 'Nhà ở'} thành công.`, 'success');
 }
 
+// Yêu cầu 3: Triển khai chức năng xóa cho nhiều tab
 function clearTabGroupData(tabName) {
-  // Placeholder implementation for clear function
   const cfg = FIELDS[tabName];
-  if (cfg && !cfg.isTable) {
-    cfg.forEach(f => {
-      const el = document.getElementById(f.id);
-      if (el) el.value = '';
-    });
-    show(`Đã xóa sạch dữ liệu trong tab ${tabName}.`, 'success');
-  }
+  if (!cfg) return;
+
+  if (cfg.isTable) { // Xử lý cho tab dạng bảng (Tab 11)
+      const tbody = document.querySelector(`#${CSS.escape(tabName)} .table-body`);
+      if (tbody) tbody.innerHTML = '';
+      addRow(tabName, true); // Thêm lại một dòng trống
+      // Cập nhật lại các giá trị tổng về 0
+      updateTotalRow();
+  } else { // Xử lý cho tab dạng trường thông thường
+      // Xử lý cả bảng con trong tab 10
+      if (tabName === "10. Căn cứ định giá") {
+          const tableBody = document.querySelector(`#${CSS.escape(MERGED_LAND_PRICE_TAB_ID)} .table-body`);
+          if(tableBody) tableBody.innerHTML = '';
+          addRow(MERGED_LAND_PRICE_TAB_ID, true);
+      }
+      cfg.forEach(f => {
+          const el = document.getElementById(f.id);
+          if (el) el.value = '';
+      });
+  }
+
+  show(`Đã xóa sạch dữ liệu trong tab ${tabName}.`, 'success');
 }
 function addRow(tab,isInit=false){
   const cfg=getTableConfig(tab);
@@ -660,12 +723,7 @@ function populateForm(data){
               const d=String(v).replace(/\D/g,'');
               v=d?numFmt(d):'';
             }else if(f.type==='currency-decimal-table'){
-              // *** FIX STARTS HERE ***
-              // The value from JSON is in standard format "100.45".
-              // We just need to replace the dot with a comma for display.
-              // The old method `numFmtDecimal` was incorrect for this case.
               v = String(v).replace('.', ',');
-              // *** FIX ENDS HERE ***
             }else if(f.type==='percent-integer-table'){
               const raw=String(v).replace(/[^0-9]/g,'');
               if(raw==='') v='';
@@ -674,7 +732,7 @@ function populateForm(data){
                 if(num>100) num=100;
                 v=num+'%';
               }
-           }else if(f.type==='percent-decimal-table'){
+           }else if(f.type==='percent-decimal-table'){
               const raw=String(v).replace(/,/g,'.').replace(/[^0-9\.]/g,'');
               if(raw==='') v='';
               else{
@@ -694,10 +752,6 @@ function populateForm(data){
       if (tab === '11. Giá trị định giá') {
         // Tái tính toán tổng ngay lập tức sau khi điền dữ liệu vào bảng
         updateTotalRow(); 
-        
-        // Sau đó, kiểm tra xem có giá trị đã lưu cho tổng số (được tính toán độc lập) không.
-        // Trong trường hợp này, chúng ta cho phép updateTotalRow() ghi đè để đảm bảo tính toán mới nhất
-        // dựa trên dữ liệu bảng được điền.
       }
     }else{
       cfg.forEach(f=>{
@@ -797,9 +851,7 @@ $('#profileForm').addEventListener('submit',async e=>{
   show('Đang tạo DOCX...','info');
   $('#btn-generate').disabled=true;
   try{
-    // *** START CHANGE: Removed hardcoded URL ***
     const resp=await fetch('/generate',{method:'POST',body:fd});
-    // *** END CHANGE ***
     if(!resp.ok)throw new Error(`${resp.status} ${resp.statusText}`);
     const blob=await resp.blob();
     const name=`HoSoTSBD_${templateFile.name.replace('.docx','')}_${new Date().toISOString().slice(0,10)}.docx`;
